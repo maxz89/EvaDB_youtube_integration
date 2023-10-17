@@ -364,6 +364,48 @@ def generate_blog_post(cursor: evadb.EvaDBCursor) -> str:
 
         print(f"✅ blog post is saved to file {BLOG_PATH}")
 
+def generate_short_summary(cursor: evadb.EvaDBCursor) -> str:
+    print("📝 Generating summary (may take a while)...")
+
+    if not os.path.exists(SUMMARY_PATH):
+        generate_summary(cursor)
+
+    # use llm to generate blog post
+    generate_blog_rel = cursor.table("Summary").select(
+        "ChatGPT('generate a concise summary of the video summary', summary)"
+    )
+    responses = generate_blog_rel.df()["chatgpt.response"]
+    summary = responses[0]
+    print(summary)
+
+def generate_highlights(cursor: evadb.EvaDBCursor) -> str:
+    print("📝 Generating highlights (may take a while)...")
+
+    if not os.path.exists(SUMMARY_PATH):
+        generate_summary(cursor)
+
+    # use llm to generate blog post
+    generate_blog_rel = cursor.table("Summary").select(
+        "ChatGPT('generate the top 5 key points of the video summary', summary)"
+    )
+    responses = generate_blog_rel.df()["chatgpt.response"]
+    print(responses[0])
+
+def generate_focus(cursor: evadb.EvaDBCursor) -> str:
+    topic = str(
+        input("\nWhat topic you would like to focus on: ")
+    )
+    print(f"🔎 Generating focused response about {topic!r} (may take a while)...")
+
+    if not os.path.exists(SUMMARY_PATH):
+        generate_summary(cursor)
+    
+    # "ChatGPT('generate the key points of the video with a focus on the topic:" + str(topic) + "from the video summary', summary)"
+    generate_blog_rel = cursor.table("Summary").select(
+        "ChatGPT('from the video summary, provide all the key points about " + str(topic) + "', summary)"
+    )
+    responses = generate_blog_rel.df()["chatgpt.response"]
+    print(responses[0])
 
 def cleanup():
     """Removes any temporary file / directory created by EvaDB."""
@@ -439,6 +481,12 @@ if __name__ == "__main__":
             question = str(input("Question (enter 'exit' to exit): "))
             if question.lower() == "exit":
                 ready = False
+            elif question.lower() == "summary" or question.lower() == "summarize":
+                generate_short_summary(cursor)
+            elif question.lower() == "highlights":
+                generate_highlights(cursor)
+            elif question.lower() == "focus":
+                generate_focus(cursor)
             else:
                 # Generate response with chatgpt udf
                 print("⏳ Generating response (may take a while)...")
